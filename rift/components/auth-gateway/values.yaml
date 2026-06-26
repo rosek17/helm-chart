@@ -1,0 +1,33 @@
+image:
+  repository: auth-gateway
+  tag: ""
+
+replicas: 1
+
+ports:
+  external: 8080
+  internal: 8081
+
+config:
+  mongoUri: "mongodb://configdb:27017/?replicaSet=rs0"
+  keycloakUrl: "http://keycloak:8080"
+
+probes:
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

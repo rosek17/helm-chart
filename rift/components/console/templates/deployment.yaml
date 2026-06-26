@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helper.fullname" . }}
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "helper.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helper.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "helper.image" . }}
+          imagePullPolicy: {{ include "helper.imagePullPolicy" . }}
+          ports:
+{{- if ((.Values.global).ingress).enabled }}
+            - name: http
+              containerPort: 80
+              protocol: TCP
+{{- else }}
+            - name: https
+              containerPort: 443
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: config-vol
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: config-vol
+              mountPath: /usr/share/nginx/html/config.json
+              subPath: config.json
+{{- if not ((.Values.global).ingress).enabled }}
+            - name: tls-vol
+              mountPath: /etc/nginx/tls
+              readOnly: true
+{{- end }}
+          livenessProbe:
+            tcpSocket:
+{{- if ((.Values.global).ingress).enabled }}
+              port: http
+{{- else }}
+              port: https
+{{- end }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+{{- if ((.Values.global).ingress).enabled }}
+              port: http
+{{- else }}
+              port: https
+{{- end }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          resources:
+            {{- include "helper.resources" (dict "resources" .Values.resources "global" .Values.global) | nindent 12 }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      volumes:
+        - name: config-vol
+          configMap:
+            name: {{ include "helper.fullname" . }}-config
+            defaultMode: 0555
+{{- if not ((.Values.global).ingress).enabled }}
+        - name: tls-vol
+          secret:
+            secretName: {{ ((.Values.global).console).secretName | default .Values.tls.secretName | default "tls-cert" }}
+{{- end }}

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helper.fullname" . }}
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "helper.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: external
+      port: {{ .Values.ports.external }}
+      targetPort: external
+      protocol: TCP
+    - name: internal
+      port: {{ .Values.ports.internal }}
+      targetPort: internal
+      protocol: TCP

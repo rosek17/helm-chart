@@ -1,0 +1,20 @@
+{{- if eq ((.Values.global).tls).mode "letsencrypt" }}
+{{- $domain := required "global.console.domain is required for letsencrypt mode" ((.Values.global).console).domain }}
+{{- $email := required "global.letsencrypt.email is required for letsencrypt mode" ((.Values.global).letsencrypt).email }}
+{{- $issuer := default "letsencrypt-prod" ((.Values.global).letsencrypt).issuer }}
+{{- $secretName := default "tls-cert" ((.Values.global).console).secretName }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-tls
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+spec:
+  secretName: {{ $secretName }}
+  issuerRef:
+    name: {{ $issuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ $domain }}
+  renewBefore: 720h
+{{- end }}

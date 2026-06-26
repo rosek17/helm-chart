@@ -1,0 +1,17 @@
+{{- $mode := ((.Values.global).tls).mode | default "self-signed" }}
+{{- if eq $mode "external" }}
+  {{- if not ((.Values.global).console).secretName }}
+    {{- fail "global.console.secretName is required when global.tls.mode is 'external' — provide the name of an existing TLS Secret" }}
+  {{- end }}
+{{- end }}
+{{- if eq $mode "letsencrypt" }}
+  {{- if not ((.Values.global).console).domain }}
+    {{- fail "global.console.domain is required when global.tls.mode is 'letsencrypt'" }}
+  {{- end }}
+  {{- if not ((.Values.global).letsencrypt).email }}
+    {{- fail "global.letsencrypt.email is required when global.tls.mode is 'letsencrypt'" }}
+  {{- end }}
+{{- end }}
+{{- if and (ne $mode "self-signed") (ne $mode "external") (ne $mode "letsencrypt") }}
+  {{- fail (printf "global.tls.mode must be one of: self-signed, external, letsencrypt — got '%s'" $mode) }}
+{{- end }}

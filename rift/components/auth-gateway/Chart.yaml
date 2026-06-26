@@ -1,0 +1,9 @@
+apiVersion: v2
+name: auth-gateway
+description: Authentication and authorization reverse proxy for cloud-rift
+type: application
+version: 0.1.0
+dependencies:
+  - name: helper
+    version: "0.1.0"
+    repository: "file://../../../helper"

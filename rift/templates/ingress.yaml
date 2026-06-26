@@ -1,0 +1,76 @@
+{{- if ((.Values.global).ingress).enabled }}
+{{- $domain := required "global.console.domain is required when global.ingress.enabled is true" ((.Values.global).console).domain }}
+{{- $tlsSecret := ((.Values.global).console).secretName | default "tls-cert" }}
+{{- $ingressClass := ((.Values.global).ingress).class }}
+{{- $authGw := index .Values "auth-gateway" | default dict }}
+{{- $authGwName := $authGw.fullnameOverride | default "auth-gateway" }}
+{{- $authGwPort := ($authGw.ports).external | default 8080 }}
+{{- $keycloakName := .Values.keycloak.fullnameOverride | default "keycloak" }}
+{{- $keycloakPort := .Values.keycloak.port | default 8080 }}
+{{- $consoleName := .Values.console.fullnameOverride | default (printf "%s-console" .Release.Name) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: cloud-rift
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- if or $ingressClass ((.Values.global).ingress).annotations }}
+  annotations:
+    {{- if $ingressClass }}
+    kubernetes.io/ingress.class: {{ $ingressClass | quote }}
+    {{- end }}
+    {{- with ((.Values.global).ingress).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if $ingressClass }}
+  ingressClassName: {{ $ingressClass | quote }}
+  {{- end }}
+  tls:
+    - hosts:
+        - {{ $domain | quote }}
+      secretName: {{ $tlsSecret | quote }}
+  rules:
+    - host: {{ $domain | quote }}
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $authGwName }}
+                port:
+                  number: {{ $authGwPort }}
+          - path: /apidocs/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $authGwName }}
+                port:
+                  number: {{ $authGwPort }}
+          - path: /realms/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $keycloakName }}
+                port:
+                  number: {{ $keycloakPort }}
+          - path: /resources/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $keycloakName }}
+                port:
+                  number: {{ $keycloakPort }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $consoleName }}
+                port:
+                  number: 80
+{{- end }}

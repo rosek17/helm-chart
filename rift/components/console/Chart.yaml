@@ -1,0 +1,10 @@
+apiVersion: v2
+name: console
+description: Console frontend and reverse proxy for the Cloud Rift platform
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: helper
+    version: "0.1.0"
+    repository: "file://../../../helper"

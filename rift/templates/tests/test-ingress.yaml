@@ -1,0 +1,30 @@
+{{- if ((.Values.global).ingress).enabled }}
+{{- $consoleName := .Values.console.fullnameOverride | default (printf "%s-console" .Release.Name) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-test-ingress
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: cloud-rift
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-console-backend
+      image: busybox:1.36
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Verifying console service is reachable on port 80..."
+          if wget -qO /dev/null --timeout=5 "http://{{ $consoleName }}:80/" 2>/dev/null; then
+            echo "PASS: console service '{{ $consoleName }}' is reachable on port 80"
+          else
+            echo "FAIL: console service '{{ $consoleName }}' is not reachable on port 80"
+            exit 1
+          fi
+{{- end }}

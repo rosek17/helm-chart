@@ -1,0 +1,28 @@
+# Development values for cloud-rift
+# Usage: helm install cloud-rift ./rift -f rift/dev-values.yaml
+#
+# All required passwords are given development defaults below, so no extra
+# --set flags are needed for a local install.
+
+global:
+  releaseTag: latest
+  imageRegistry: ghcr.io/cloud-rift
+  tls:
+    mode: self-signed
+  console:
+    domain: "localhost"
+
+# --- Infrastructure ---
+
+configdb:
+  auth:
+    rootPassword: "devpassword"
+  persistence:
+    size: 5Gi
+
+keycloak:
+  adminPassword: "devpassword"
+  postgresql:
+    password: "devpassword"
+    persistence:
+      size: 2Gi

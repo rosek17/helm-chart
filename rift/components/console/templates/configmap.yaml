@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "helper.fullname" . }}-config
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        include /etc/nginx/mime.types;
+
+        server {
+{{- if ((.Values.global).ingress).enabled }}
+            listen 80;
+{{- else }}
+            listen 443 ssl;
+
+            ssl_certificate     /etc/nginx/tls/tls.crt;
+            ssl_certificate_key /etc/nginx/tls/tls.key;
+
+            location /api/ {
+                proxy_pass http://auth-gateway:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                client_max_body_size 512M;
+                proxy_connect_timeout 60s;
+                proxy_send_timeout 300s;
+                proxy_read_timeout 300s;
+                send_timeout 300s;
+            }
+
+            location /apidocs/ {
+                proxy_pass http://auth-gateway:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Block access to keycloak master realm
+            location /realms/master/ {
+                deny all;
+                return 404;
+            }
+
+            location /realms/ {
+                proxy_pass http://keycloak:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /resources/ {
+                proxy_pass http://keycloak:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+{{- end }}
+
+            server_name _;
+
+            location / {
+                root   /usr/share/nginx/html;
+                index  index.html;
+                try_files $uri $uri/ /index.html;
+            }
+        }
+    }
+  config.json: |
+    {
+      "keycloakUrl": "{{ ((.Values.config).keycloakUrl) | default "/" }}",
+      "keycloakRealm": "{{ ((.Values.config).keycloakRealm) | default "root" }}",
+      "keycloakClientId": "{{ ((.Values.config).keycloakClientId) | default "controller" }}"
+    }

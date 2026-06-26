@@ -1,0 +1,16 @@
+# Patterns to ignore when building packages.
+.git
+.gitignore
+.github/
+README.md
+dev-values.yaml
+Makefile
+scripts/
+docs/
+*.swp
+*.bak
+*.tmp
+*~
+.DS_Store
+.idea/
+.vscode/

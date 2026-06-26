@@ -1,0 +1,29 @@
+apiVersion: v2
+name: rift
+description: Cloudrift controller to provide managed kubernetes as a service
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  # Infrastructure subcharts (siblings at repo root)
+  - name: mongodb
+    version: "0.1.0"
+    repository: "file://../mongodb"
+    alias: configdb
+  - name: keycloak
+    version: "0.1.0"
+    repository: "file://../keycloak"
+
+  # Helper library chart (sibling at repo root)
+  - name: helper
+    version: "0.1.0"
+    repository: "file://../helper"
+
+  # Application component subcharts
+  - name: auth-gateway
+    version: "0.1.0"
+    repository: "file://components/auth-gateway"
+  - name: console
+    version: "0.1.0"
+    repository: "file://components/console"

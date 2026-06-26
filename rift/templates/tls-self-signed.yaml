@@ -1,0 +1,15 @@
+{{- if eq (((.Values.global).tls).mode | default "self-signed") "self-signed" }}
+{{- $secretName := default "tls-cert" ((.Values.global).console).secretName }}
+{{- $domain := default "cloud-rift.local" ((.Values.global).console).domain }}
+{{- $cert := genSelfSignedCert $domain nil (list $domain (printf "*.%s" $domain)) 3650 }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $cert.Cert | b64enc }}
+  tls.key: {{ $cert.Key | b64enc }}
+{{- end }}

@@ -1,0 +1,72 @@
+global:
+  releaseTag: latest
+  imageRegistry: ghcr.io/cloud-rift
+  imagePullPolicy: IfNotPresent
+  skipResourceConstraints: false
+  ingress:
+    enabled: false
+    class: nginx
+    annotations: {}
+  console:
+    domain: ""
+    secretName: ""
+  tls:
+    mode: "self-signed"   # self-signed | external | letsencrypt
+  letsencrypt:
+    email: ""             # required for letsencrypt mode
+    issuer: "letsencrypt-prod"
+
+# --- Infrastructure subchart overrides ---
+
+configdb:
+  replicaCount: 1
+  replicaSet:
+    name: rs0
+  auth:
+    rootUsername: root
+    rootPassword: ""   # must be set at deploy time
+  persistence:
+    size: 10Gi
+
+keycloak:
+  adminUser: admin
+  adminPassword: ""   # must be set at deploy time
+  postgresql:
+    database: keycloak
+    username: keycloak
+    password: ""       # must be set at deploy time
+    persistence:
+      size: 5Gi
+
+# --- Application component overrides ---
+
+auth-gateway:
+  fullnameOverride: auth-gateway
+  image:
+    repository: auth-gateway
+  replicas: 1
+  ports:
+    external: 8080
+    internal: 8081
+  config:
+    mongoUri: "mongodb://configdb:27017/?replicaSet=rs0"
+    keycloakUrl: "http://keycloak:8080"
+
+console:
+  fullnameOverride: console
+  image:
+    repository: console
+  replicas: 1
+  service:
+    type: ClusterIP   # or LoadBalancer for direct exposure
+    port: 443
+  tls:
+    secretName: "tls-cert"
+  config:
+    keycloakUrl: "/"
+    keycloakRealm: "root"
+    keycloakClientId: "controller"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
