@@ -1,0 +1,23 @@
+image:
+  repository: docker.io/mongo
+  tag: "7"
+
+replicaCount: 1
+
+replicaSet:
+  name: rs0
+
+auth:
+  rootUsername: root
+  rootPassword: ""   # must be set at deploy time
+
+persistence:
+  size: 10Gi
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 2Gi

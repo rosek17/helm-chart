@@ -1,0 +1,30 @@
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: "26.2.5"
+
+adminUser: admin
+adminPassword: ""   # must be set at deploy time
+
+postgresql:
+  image:
+    repository: docker.io/postgres
+    tag: "16"
+  database: keycloak
+  username: keycloak
+  password: ""       # must be set at deploy time
+  persistence:
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 2Gi

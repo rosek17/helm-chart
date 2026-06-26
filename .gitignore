@@ -1,0 +1,6 @@
+*/charts/*.tgz
+*/Chart.lock
+dist/
+agentic-core/components/*/charts/*.tgz
+agentic-core/components/*/Chart.lock
+.gitkeep

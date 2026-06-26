@@ -1,0 +1,11 @@
+apiVersion: v2
+name: mongodb
+description: MongoDB subchart for cloud-rift config database
+type: application
+version: 0.1.0
+appVersion: "7"
+
+dependencies:
+  - name: helper
+    version: "0.1.0"
+    repository: "file://../helper"

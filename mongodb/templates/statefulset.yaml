@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "mongodb.fullname" . }}
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "mongodb.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "helper.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helper.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      containers:
+        - name: mongodb
+          image: {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default "7") }}
+          imagePullPolicy: IfNotPresent
+          command: ["bash"]
+          args: ["-c", "/start-mongodb.sh"]
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}
+                  key: MONGO_INITDB_ROOT_PASSWORD
+            - name: REPLICA_COUNT
+              value: {{ .Values.replicaCount | quote }}
+            - name: REPLICA_NAME
+              value: {{ .Values.replicaSet.name | quote }}
+            - name: MONGODB_SERVICE_SERVICE_HOST
+              value: {{ include "mongodb.fullname" . }}
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            timeoutSeconds: 15
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 15
+            failureThreshold: 4
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            - name: mongo-script-vol
+              mountPath: /start-mongodb.sh
+              subPath: start-mongodb.sh
+            - name: mongo-config
+              mountPath: /etc/myconfig
+      volumes:
+        - name: mongo-config
+          secret:
+            secretName: {{ include "mongodb.fullname" . }}-config
+            defaultMode: 0400
+        - name: mongo-script-vol
+          configMap:
+            name: {{ include "mongodb.fullname" . }}-script
+            defaultMode: 0555
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

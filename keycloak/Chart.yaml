@@ -1,0 +1,11 @@
+apiVersion: v2
+name: keycloak
+description: Keycloak OIDC subchart with PostgreSQL for cloud-rift authentication
+type: application
+version: 0.1.0
+appVersion: "25.0"
+
+dependencies:
+  - name: helper
+    version: "0.1.0"
+    repository: "file://../helper"
