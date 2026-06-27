@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helper.fullname" . }}
+  labels:
+    {{- include "helper.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "helper.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helper.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-mongodb
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z configdb 27017; do echo waiting for mongodb; sleep 2; done']
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "helper.image" . }}
+          imagePullPolicy: {{ include "helper.imagePullPolicy" . }}
+          ports:
+            - name: api
+              containerPort: {{ .Values.ports.api }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.ports.grpc }}
+              protocol: TCP
+          env:
+            - name: API_PORT
+              value: {{ .Values.ports.api | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.ports.grpc | quote }}
+            - name: MONGO_CONFIGDB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: configdb
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_CONFIGDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: configdb
+                  key: MONGO_INITDB_ROOT_PASSWORD
+          volumeMounts:
+            - name: config-vol
+              mountPath: /opt/config.yaml
+              subPath: config.yaml
+          livenessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          resources:
+            {{- include "helper.resources" (dict "resources" .Values.resources "global" .Values.global) | nindent 12 }}
+      volumes:
+        - name: config-vol
+          configMap:
+            name: {{ include "helper.fullname" . }}-config
+            defaultMode: 0555

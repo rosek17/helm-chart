@@ -77,7 +77,10 @@ data:
     }
   config.json: |
     {
-      "keycloakUrl": "{{ ((.Values.config).keycloakUrl) | default "/" }}",
-      "keycloakRealm": "{{ ((.Values.config).keycloakRealm) | default "root" }}",
-      "keycloakClientId": "{{ ((.Values.config).keycloakClientId) | default "controller" }}"
+      "keycloak": {
+        "url": "{{ ((.Values.config).keycloakUrl) | default "/" }}",
+        "realm": "{{ ((.Values.config).keycloakRealm) | default "root" }}",
+        "clientId": "{{ ((.Values.config).keycloakClientId) | default "controller" }}"
+      },
+      "apiBaseUrl": "{{ ((.Values.config).apiBaseUrl) | default "/" }}"
     }

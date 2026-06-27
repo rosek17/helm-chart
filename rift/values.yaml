@@ -1,7 +1,7 @@
 global:
   releaseTag: latest
   imageRegistry: ghcr.io/cloud-rift
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always   # applies to the ghcr.io app components (auth-gateway, console, cluster-manager)
   skipResourceConstraints: false
   ingress:
     enabled: false
@@ -52,6 +52,44 @@ auth-gateway:
     mongoUri: "mongodb://configdb:27017/?replicaSet=rs0"
     keycloakUrl: "http://keycloak:8080"
 
+cluster-manager:
+  fullnameOverride: cluster-manager
+  image:
+    repository: cluster-manager
+  replicas: 1
+  ports:
+    api: 8080
+    grpc: 8081
+  config:
+    mongoUri: "mongodb://configdb:27017/?replicaSet=rs0"
+    # Operator-curated catalog served to clients. The cluster-manager subchart
+    # ships this as its default (mirrors cluster-manager/default.yaml). Uncomment
+    # and edit to override it at the umbrella level:
+    # catalog:
+    #   kubernetesVersions:
+    #     default: "v1.30"
+    #     supported:
+    #       - "v1.29"
+    #       - "v1.30"
+    #   osImages:
+    #     default: "ubuntu-22.04"
+    #     supported:
+    #       - id: "ubuntu-22.04"
+    #         displayName: "Ubuntu 22.04 LTS"
+    #         source: "docker://quay.io/containerdisks/ubuntu:22.04"
+    #         defaults: { cpu: 2, memoryBytes: 4294967296, diskBytes: 21474836480 }
+    #         min: { cpu: 1, memoryBytes: 2147483648, diskBytes: 10737418240 }
+    #         max: { cpu: 16, memoryBytes: 68719476736, diskBytes: 549755813888 }
+    #   cni:
+    #     default: "flannel"
+    #     supported:
+    #       - id: "flannel"
+    #         displayName: "Flannel"
+    #         podCidr: "10.244.0.0/16"
+    #   addons:
+    #     - id: "local-path"
+    #       displayName: "Local Path Provisioner"
+
 console:
   fullnameOverride: console
   image:
@@ -66,6 +104,7 @@ console:
     keycloakUrl: "/"
     keycloakRealm: "root"
     keycloakClientId: "controller"
+    apiBaseUrl: "/"
   resources:
     requests:
       cpu: 100m

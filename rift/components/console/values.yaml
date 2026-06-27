@@ -15,6 +15,7 @@ config:
   keycloakUrl: "/"
   keycloakRealm: "root"
   keycloakClientId: "controller"
+  apiBaseUrl: "/"
 
 probes:
   liveness:

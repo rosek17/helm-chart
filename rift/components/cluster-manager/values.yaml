@@ -1,0 +1,58 @@
+image:
+  repository: cluster-manager
+  tag: ""
+
+replicas: 1
+
+ports:
+  api: 8080      # HTTP (grpc-gateway) port the auth-gateway forwards to
+  grpc: 8081     # native gRPC, loopback only
+
+config:
+  mongoUri: "mongodb://configdb:27017/?replicaSet=rs0"
+  # Operator-curated catalog served to clients. Overrides the image-baked
+  # default.yaml; mirrors the cluster-manager repo's default catalog.
+  catalog:
+    kubernetesVersions:
+      default: "v1.30"
+      supported:
+        - "v1.29"
+        - "v1.30"
+    osImages:
+      default: "ubuntu-22.04"
+      supported:
+        - id: "ubuntu-22.04"
+          displayName: "Ubuntu 22.04 LTS"
+          source: "docker://quay.io/containerdisks/ubuntu:22.04"
+          defaults: { cpu: 2, memoryBytes: 4294967296, diskBytes: 21474836480 }
+          min: { cpu: 1, memoryBytes: 2147483648, diskBytes: 10737418240 }
+          max: { cpu: 16, memoryBytes: 68719476736, diskBytes: 549755813888 }
+    cni:
+      default: "flannel"
+      supported:
+        - id: "flannel"
+          displayName: "Flannel"
+          podCidr: "10.244.0.0/16"
+    addons:
+      - id: "local-path"
+        displayName: "Local Path Provisioner"
+
+probes:
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

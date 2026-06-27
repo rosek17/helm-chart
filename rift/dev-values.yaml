@@ -7,6 +7,11 @@
 global:
   releaseTag: latest
   imageRegistry: ghcr.io/cloud-rift
+  # Name of the dockerconfigjson secret holding ghcr.io/cloud-rift credentials.
+  # Create it manually and map it onto the namespace's default service account
+  # (see README "Image Pull Secrets"). Leave empty to skip associating any pull
+  # secret (e.g. when images are public or pre-pulled).
+  imagePullSecret: ghcr-creds
   tls:
     mode: self-signed
   console:
@@ -26,3 +31,34 @@ keycloak:
     password: "devpassword"
     persistence:
       size: 2Gi
+
+# --- Application components ---
+
+cluster-manager:
+  config:
+    # Operator-curated catalog served to clients (mirrors
+    # cluster-manager/default.yaml). Overrides the image-baked default.
+    catalog:
+      kubernetesVersions:
+        default: "v1.30"
+        supported:
+          - "v1.29"
+          - "v1.30"
+      osImages:
+        default: "ubuntu-22.04"
+        supported:
+          - id: "ubuntu-22.04"
+            displayName: "Ubuntu 22.04 LTS"
+            source: "docker://quay.io/containerdisks/ubuntu:22.04"
+            defaults: { cpu: 2, memoryBytes: 4294967296, diskBytes: 21474836480 }
+            min: { cpu: 1, memoryBytes: 2147483648, diskBytes: 10737418240 }
+            max: { cpu: 16, memoryBytes: 68719476736, diskBytes: 549755813888 }
+      cni:
+        default: "flannel"
+        supported:
+          - id: "flannel"
+            displayName: "Flannel"
+            podCidr: "10.244.0.0/16"
+      addons:
+        - id: "local-path"
+          displayName: "Local Path Provisioner"

@@ -27,3 +27,6 @@ dependencies:
   - name: console
     version: "0.1.0"
     repository: "file://components/console"
+  - name: cluster-manager
+    version: "0.1.0"
+    repository: "file://components/cluster-manager"

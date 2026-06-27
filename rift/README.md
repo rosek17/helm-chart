@@ -23,7 +23,7 @@ Umbrella Helm chart for deploying the Cloud Rift control plane on Kubernetes.
               └──────────┘
 ```
 
-**Application components** (2): auth-gateway, console
+**Application components** (3): auth-gateway, cluster-manager, console
 
 **Infrastructure subcharts** (2): configdb (MongoDB), keycloak (with PostgreSQL)
 
@@ -65,6 +65,56 @@ Umbrella Helm chart for deploying the Cloud Rift control plane on Kubernetes.
    kubectl get pods
    ```
 
+## Image Pull Secrets (Private Registry)
+
+The application images (`ghcr.io/cloud-rift/auth-gateway`, `ghcr.io/cloud-rift/console`)
+are published to a **private** registry. Rather than configuring an `imagePullSecret`
+on every Deployment, attach a single pull secret to the **service account** the pods
+run under — every pod scheduled with that account then inherits the credentials.
+
+The chart does **not** create or manage this secret; you create it once in the
+release namespace and map it onto the existing service account. The secret name
+is taken from `global.imagePullSecret` (set to `ghcr-creds` in `dev-values.yaml`).
+**If that value is left empty, skip this whole section** — no pull secret is
+associated, which is the right choice when the images are public or pre-pulled.
+
+1. **Create the registry secret** (type `kubernetes.io/dockerconfigjson`).
+   Use a GitHub Personal Access Token with the `read:packages` scope. The secret
+   name (`ghcr-creds` below) is the value you pass to the next step — change it if
+   you prefer a different name.
+
+   ```bash
+   kubectl create secret docker-registry ghcr-creds \
+     --namespace cloud-rift \
+     --docker-server=ghcr.io \
+     --docker-username=<github-username> \
+     --docker-password=<github-pat> \
+     --docker-email=<email>
+   ```
+
+2. **Map the secret onto the existing service account.** The Cloud Rift pods run
+   under the namespace's `default` service account (the chart does not create a
+   dedicated one). Patch it to reference the secret by name:
+
+   ```bash
+   kubectl patch serviceaccount default \
+     --namespace cloud-rift \
+     -p '{"imagePullSecrets":[{"name":"ghcr-creds"}]}'
+   ```
+
+   Substitute `ghcr-creds` with the secret name you chose in step 1.
+
+3. **Roll the pods** so they pick up the credentials (service-account
+   `imagePullSecrets` are applied only at pod creation time):
+
+   ```bash
+   kubectl rollout restart deployment -n cloud-rift
+   ```
+
+> **Note:** Do both steps **before** the first `helm install` to avoid an initial
+> `ImagePullBackOff`. The infrastructure subcharts (configdb, keycloak) pull from
+> public registries (`docker.io`, `quay.io`) and do not need this secret.
+
 ## Values Reference
 
 ### Global
@@ -73,7 +123,7 @@ Umbrella Helm chart for deploying the Cloud Rift control plane on Kubernetes.
 |---|---|---|
 | `global.releaseTag` | Image tag for all components | `latest` |
 | `global.imageRegistry` | Container registry | `ghcr.io/cloud-rift` |
-| `global.imagePullPolicy` | Image pull policy | `IfNotPresent` |
+| `global.imagePullPolicy` | Image pull policy for the ghcr.io app components | `Always` |
 | `global.skipResourceConstraints` | Drop CPU/memory requests and limits | `false` |
 | `global.tls.mode` | TLS mode: `self-signed`, `external`, `letsencrypt` | `self-signed` |
 | `global.console.domain` | Domain for ingress and TLS certificate | `""` |
@@ -114,6 +164,20 @@ Each application component supports:
 | `auth-gateway.ports.external` | External (proxied) port | `8080` |
 | `auth-gateway.ports.internal` | Internal management port | `8081` |
 
+#### cluster-manager
+
+Manages cluster lifecycle resources. Exposes a ClusterIP service on the HTTP API
+port only; the auth-gateway forwards authenticated API requests to it (the gRPC
+port is loopback-only and not published). Consumes MongoDB credentials from the
+`configdb` secret, like auth-gateway.
+
+| Parameter | Description | Default |
+|---|---|---|
+| `cluster-manager.config.mongoUri` | MongoDB connection string | `mongodb://configdb:27017/?replicaSet=rs0` |
+| `cluster-manager.ports.api` | HTTP API port the gateway forwards to | `8080` |
+| `cluster-manager.ports.grpc` | Native gRPC port (loopback only) | `8081` |
+| `cluster-manager.config.catalog` | Operator-curated catalog (k8s versions, OS images, CNI, addons) | see `values.yaml` |
+
 #### console
 
 | Parameter | Description | Default |
@@ -124,6 +188,7 @@ Each application component supports:
 | `console.config.keycloakUrl` | Keycloak URL exposed to the frontend | `/` |
 | `console.config.keycloakRealm` | Keycloak realm | `root` |
 | `console.config.keycloakClientId` | Keycloak client ID | `controller` |
+| `console.config.apiBaseUrl` | Base URL for API calls from the frontend | `/` |
 
 ## TLS Modes
 
@@ -228,6 +293,6 @@ kubectl port-forward svc/keycloak 8081:8080
 | Symptom | Cause | Fix |
 |---|---|---|
 | Pods stuck in `Pending` | PVC not bound — no StorageClass or insufficient capacity | Check `kubectl get pvc` and ensure a default StorageClass exists |
-| `ImagePullBackOff` | Missing registry credentials | Verify access to `ghcr.io/cloud-rift` and create an `imagePullSecret` if needed |
+| `ImagePullBackOff` | Missing registry credentials | Create the `ghcr-creds` secret and map it onto the default service account — see [Image Pull Secrets](#image-pull-secrets-private-registry) |
 | TLS errors | Wrong TLS mode or missing secret | For `external` mode, verify `global.console.secretName` secret exists |
 | Keycloak/Mongo pods crash on boot | Required password not set | Ensure `keycloak.adminPassword`, `keycloak.postgresql.password`, and `configdb.auth.rootPassword` are set (dev-values supplies defaults) |
